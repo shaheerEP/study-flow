@@ -16,6 +16,7 @@ import {
   Type,
   ArrowLeft,
   AlertTriangle,
+  Tag,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -57,6 +58,8 @@ export default function AddContentPage() {
   const [newSubjectName, setNewSubjectName] = useState("")
   const [newSubjectColor, setNewSubjectColor] = useState("bg-gray-500")
   const [duplicateWarning, setDuplicateWarning] = useState(false)
+  const [tags, setTags] = useState<string[]>([])
+  const [currentTag, setCurrentTag] = useState("")
 
   // Auto-save functionality
   useEffect(() => {
@@ -72,7 +75,7 @@ export default function AddContentPage() {
 
       return () => clearTimeout(timer)
     }
-  }, [content, title])
+  }, [content, title, tags])
 
   // Check for duplicates
   useEffect(() => {
@@ -131,7 +134,7 @@ export default function AddContentPage() {
 
   const handleSave = () => {
     // Simulate save
-    console.log("Saving content:", { title, content, subject: selectedSubject })
+    console.log("Saving content:", { title, content, subject: selectedSubject, tags })
     router.push("/content-library")
   }
 
@@ -141,6 +144,17 @@ export default function AddContentPage() {
       setShowNewSubjectDialog(false)
       setNewSubjectName("")
     }
+  }
+
+  const handleAddTag = () => {
+    if (currentTag.trim() && !tags.includes(currentTag.trim())) {
+      setTags([...tags, currentTag.trim()])
+      setCurrentTag("")
+    }
+  }
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove))
   }
 
   return (
@@ -269,6 +283,36 @@ export default function AddContentPage() {
                     </Dialog>
                   </div>
                 </div>
+
+                {/* Tags */}
+                <div className="space-y-2">
+                  <Label>Tags</Label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                        <Tag className="h-3 w-3" />
+                        {tag}
+                        <button 
+                          onClick={() => handleRemoveTag(tag)}
+                          className="ml-1 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex space-x-2">
+                    <Input
+                      placeholder="Add a tag..."
+                      value={currentTag}
+                      onChange={(e) => setCurrentTag(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
+                    />
+                    <Button variant="outline" onClick={handleAddTag}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -355,6 +399,19 @@ export default function AddContentPage() {
                     </Badge>
                   </div>
                 )}
+                {tags.length > 0 && (
+                  <div className="flex flex-col space-y-2">
+                    <span className="text-sm">Tags</span>
+                    <div className="flex flex-wrap gap-1">
+                      {tags.map((tag) => (
+                        <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                          <Tag className="h-3 w-3" />
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -364,7 +421,7 @@ export default function AddContentPage() {
                 <CardTitle className="text-lg">Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button onClick={handleSave} className="w-full" disabled={!content.trim() || !title.trim()}>
+                <Button onClick={handleSave} className="w-full" disabled={!content.trim()}>
                   <Save className="h-4 w-4 mr-2" />
                   Save Content
                 </Button>

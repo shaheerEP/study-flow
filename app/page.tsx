@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Calendar,
   Plus,
@@ -21,10 +21,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { useTheme } from "next-themes"
+import { LogoutButton } from "@/components/logout-button"
 
 export default function StudyFlowDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { theme, setTheme } = useTheme()
+
+  // Set auth status on component mount (simulate successful login)
+  useEffect(() => {
+    localStorage.setItem("studyflow_auth", "true")
+  }, [])
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -138,6 +144,11 @@ export default function StudyFlowDashboard() {
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             </Button>
 
+            {/* Logout Button */}
+            <div className="hidden md:block">
+              <LogoutButton />
+            </div>
+
             {/* Mobile Menu Button */}
             <Button
               variant="ghost"
@@ -166,6 +177,9 @@ export default function StudyFlowDashboard() {
               <Button variant="ghost" className="justify-start">
                 Settings
               </Button>
+              <div className="pt-2 border-t">
+                <LogoutButton />
+              </div>
             </nav>
           </div>
         )}
@@ -245,6 +259,26 @@ export default function StudyFlowDashboard() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Complete Review Section */}
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Ready for Today's Review?</h3>
+                    <p className="text-muted-foreground">{totalReviews} items are scheduled for review today</p>
+                  </div>
+                  <Button
+                    size="lg"
+                    onClick={() => (window.location.href = "/complete-review")}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    <BookOpen className="h-5 w-5 mr-2" />
+                    Complete Review
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Review Sections */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -338,6 +372,14 @@ export default function StudyFlowDashboard() {
                 <Button variant="outline" className="w-full justify-start">
                   <Plus className="h-4 w-4 mr-2" />
                   Add New Content
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => (window.location.href = "/complete-review")}
+                >
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Complete Review
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
                   <BarChart3 className="h-4 w-4 mr-2" />
