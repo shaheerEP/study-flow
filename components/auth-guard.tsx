@@ -1,47 +1,33 @@
 "use client"
 
 import type React from "react"
-
-import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { Brain, Loader2 } from "lucide-react"
+import { usePathname } from "next/navigation"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 
 interface AuthGuardProps {
   children: React.ReactNode
 }
 
+// Public routes that don't require authentication
+const publicRoutes = ['/login', '/auth/callback']
+
 export function AuthGuard({ children }: AuthGuardProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { data: session, status } = useSession()
+  const pathname = usePathname()
+  const router = useRouter()
 
   useEffect(() => {
-    // Simulate checking authentication status
-    const checkAuth = async () => {
-      try {
-        // In a real app, you would check:
-        // 1. Valid JWT token in localStorage/cookies
-        // 2. Token expiration
-        // 3. User session with your backend
-
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        // For demo purposes, randomly determine auth status
-        // In production, this would be a real auth check
-        const isLoggedIn = localStorage.getItem("studyflow_auth") === "true"
-
-        setIsAuthenticated(isLoggedIn)
-      } catch (error) {
-        console.error("Auth check failed:", error)
-        setIsAuthenticated(false)
-      } finally {
-        setIsLoading(false)
-      }
+    // If not authenticated and not on a public route, redirect to login
+    if (status === "unauthenticated" && !publicRoutes.includes(pathname)) {
+      router.push("/login")
     }
-
-    checkAuth()
-  }, [])
+  }, [status, pathname, router])
 
   // Show loading spinner while checking auth
-  if (isLoading) {
+  if (status === "loading") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -59,14 +45,16 @@ export function AuthGuard({ children }: AuthGuardProps) {
     )
   }
 
-  // Redirect to login if not authenticated
-  if (!isAuthenticated) {
-    if (typeof window !== "undefined") {
-      window.location.href = "/login"
-    }
-    return null
+  // If on a public route, always show the content
+  if (publicRoutes.includes(pathname)) {
+    return <>{children}</>
   }
 
-  // Render protected content if authenticated
-  return <>{children}</>
+  // If authenticated, show the protected content
+  if (status === "authenticated") {
+    return <>{children}</>
+  }
+
+  // If not authenticated and not on public route, show nothing (will redirect)
+  return null
 }

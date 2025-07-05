@@ -4,28 +4,20 @@ import { useState } from "react"
 import { Brain, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { signIn } from "next-auth/react"
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true)
-
-    try {
-      // Simulate Google OAuth flow
-      // In a real app, this would redirect to Google OAuth
-      console.log("Initiating Google OAuth...")
-
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Simulate successful login and redirect to dashboard
-      window.location.href = "/"
-    } catch (error) {
-      console.error("Login failed:", error)
-      setIsLoading(false)
-    }
+  setIsLoading(true)
+  try {
+    await signIn('google', { callbackUrl: '/' })
+  } catch (error) {
+    console.error("Login failed:", error)
+    setIsLoading(false)
   }
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
@@ -128,3 +120,4 @@ export default function LoginPage() {
     </div>
   )
 }
+  
