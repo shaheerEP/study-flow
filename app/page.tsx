@@ -16,12 +16,13 @@ import {
   Menu,
   X,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { useTheme } from "next-themes"
 import { LogoutButton } from "@/components/logout-button"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function StudyFlowDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -128,14 +129,24 @@ export default function StudyFlowDashboard() {
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-6 ml-8">
-              <Button variant="ghost" className="text-primary font-medium">
-                Dashboard
-              </Button>
-              <Button variant="ghost">Add Content</Button>
-              <Button variant="ghost">Analytics</Button>
-              <Button variant="ghost">Settings</Button>
-            </nav>
+        
+<nav className="hidden md:flex items-center space-x-6 ml-8">
+  <Link href="/">
+    <Button variant="ghost" className="text-primary font-medium">
+      Dashboard
+    </Button>
+  </Link>
+  <Link href="/add-content">
+    <Button variant="ghost">Add Content</Button>
+  </Link>
+  <Link href="/analytics">
+    <Button variant="ghost">Analytics</Button>
+  </Link>
+  <Link href="/settings">
+    <Button variant="ghost">Settings</Button>
+  </Link>
+</nav>
+
           </div>
 
           <div className="flex items-center space-x-4">
