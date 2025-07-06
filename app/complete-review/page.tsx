@@ -29,9 +29,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { toast } from "@/components/ui/use-toast"
-
-// Sample content data for today's review
 
 interface ContentItem {
   _id: string
@@ -40,8 +37,10 @@ interface ContentItem {
   subject: { name: string; color: string }
   reviewStage: 'daily' | 'weekly' | 'monthly' | 'yearly'
   createdAt: string
+  scheduledDate: string
   difficulty?: 'easy' | 'medium' | 'hard'
   estimatedTime?: string
+  reviewCount?: number
 }
 
 export default function CompleteReviewPage() {
@@ -55,11 +54,11 @@ export default function CompleteReviewPage() {
   const [todaysContent, setTodaysContent] = useState<ContentItem[]>([])
   const [loading, setLoading] = useState(true)
 
-   useEffect(() => {
+  useEffect(() => {
     fetchTodaysContent()
   }, [])
 
-    const determineReviewStage = (reviewCount: number): 'daily' | 'weekly' | 'monthly' | 'yearly' => {
+  const determineReviewStage = (reviewCount: number): 'daily' | 'weekly' | 'monthly' | 'yearly' => {
     if (reviewCount < 2) return 'daily'
     if (reviewCount < 5) return 'weekly'
     if (reviewCount < 8) return 'monthly'
@@ -75,7 +74,8 @@ export default function CompleteReviewPage() {
           ...item,
           _id: item._id.toString(),
           estimatedTime: item.estimatedTime || "3 min",
-          reviewStage: determineReviewStage(item.reviewCount)
+          reviewStage: determineReviewStage(item.reviewCount || 0),
+          scheduledDate: item.scheduledDate || new Date().toISOString()
         })))
       }
     } catch (error) {
@@ -90,16 +90,12 @@ export default function CompleteReviewPage() {
     }
   }
 
-
-
-
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   })
-
 
   const renderContent = (text: string) => {
     return text
@@ -117,7 +113,7 @@ export default function CompleteReviewPage() {
       .replace(/^(.+)$/, '<p class="mb-3">$1</p>')
   }
 
-  const handleCopyItem = async (item: (typeof todaysContent)[0]) => {
+  const handleCopyItem = async (item: ContentItem) => {
     const textContent = `${item.title}\n\n${item.content}`
     try {
       await navigator.clipboard.writeText(textContent)
@@ -136,6 +132,10 @@ export default function CompleteReviewPage() {
   }
 
   const handleCopyAll = async () => {
+    const activeItems = todaysContent.filter(
+      (item) => !archivedItems.includes(item._id) && !deletedItems.includes(item._id)
+    )
+    
     const allContent = activeItems.map((item) => `${item.title}\n\n${item.content}\n\n---\n\n`).join("")
 
     try {
@@ -154,11 +154,41 @@ export default function CompleteReviewPage() {
     }
   }
 
-
-  const handleDeleteItem = (itemId: number) => {
+  const handleDeleteItem = (itemId: string) => {
     setItemToDelete(itemId)
     setShowDeleteDialog(true)
   }
+
+  const handleMarkAsComplete = async (itemId: string) => {
+  try {
+    const response = await fetch('/api/content/actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reviewed', contentId: itemId })
+    })
+
+    if (response.ok) {
+      setArchivedItems([...archivedItems, itemId])
+      const item = todaysContent.find(item => item._id === itemId)
+      toast({
+        title: "Marked as complete",
+        description: `${item?.title || 'Content'} has been marked as reviewed and will reappear at the next interval.`
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to mark as complete.",
+        variant: "destructive"
+      })
+    }
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to mark as complete.",
+      variant: "destructive"
+    })
+  }
+}
 
 
   const getStageColor = (stage: string) => {
@@ -176,7 +206,6 @@ export default function CompleteReviewPage() {
     }
   }
 
-   // Update action handlers to use API
   const handleArchiveItem = async (itemId: string) => {
     try {
       const response = await fetch('/api/content/actions', {
@@ -233,7 +262,7 @@ export default function CompleteReviewPage() {
     }
   }
 
-   if (loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -244,18 +273,17 @@ export default function CompleteReviewPage() {
     )
   }
 
-  // Update the filtering logic
-const activeItems = todaysContent.filter(
-  (item) => !archivedItems.includes(item._id) && !deletedItems.includes(item._id)
-)
+  // Filter active items
+  const activeItems = todaysContent.filter(
+    (item) => !archivedItems.includes(item._id) && !deletedItems.includes(item._id)
+  )
 
-// Add this calculation
-const totalEstimatedTime = activeItems.reduce((total, item) => {
-  const timeStr = item.estimatedTime || "3 min"
-  const minutes = parseInt(timeStr.split(" ")[0])
-  return total + minutes
-}, 0)
-
+  // Calculate total estimated time
+  const totalEstimatedTime = activeItems.reduce((total, item) => {
+    const timeStr = item.estimatedTime || "3 min"
+    const minutes = parseInt(timeStr.split(" ")[0])
+    return total + minutes
+  }, 0)
 
   return (
     <div className="min-h-screen bg-background">
@@ -311,7 +339,6 @@ const totalEstimatedTime = activeItems.reduce((total, item) => {
                   <p className="text-lg font-semibold">{totalEstimatedTime} minutes</p>
                 </div>
               </div>
-          
             </div>
           </CardContent>
         </Card>
@@ -331,7 +358,7 @@ const totalEstimatedTime = activeItems.reduce((total, item) => {
             </Card>
           ) : (
             activeItems.map((item, index) => (
-    <Card key={item._id} className="relative">
+              <Card key={item._id} className="relative">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -351,7 +378,6 @@ const totalEstimatedTime = activeItems.reduce((total, item) => {
                         <Badge variant="outline" className={getStageColor(item.reviewStage)}>
                           {item.reviewStage}
                         </Badge>
-                       
                       </div>
                     </div>
 
@@ -392,8 +418,16 @@ const totalEstimatedTime = activeItems.reduce((total, item) => {
                     className="prose prose-sm max-w-none dark:prose-invert leading-relaxed"
                     dangerouslySetInnerHTML={{ __html: renderContent(item.content) }}
                   />
+                  <div className="flex justify-end mt-4">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleMarkAsComplete(item._id)}
+                    >
+                      Mark as Complete
+                    </Button>
+                  </div>
                 </CardContent>
-
                 {index < activeItems.length - 1 && <Separator className="mt-6" />}
               </Card>
             ))
