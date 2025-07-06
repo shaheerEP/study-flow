@@ -14,16 +14,25 @@ const UserService = {
   },
 
   async createUser(userData: any) {
-    try {
-      const client = await clientPromise
-      const db = client.db() // Your database name
-      const result = await db.collection('users').insertOne(userData)
-      return result.insertedId
-    } catch (error) {
-      console.error('Error creating user:', error)
-      throw error
+  try {
+    const client = await clientPromise
+    const db = client.db()
+    
+    // Add default repetition flow if not provided
+    const userWithDefaults = {
+      ...userData,
+      repetitionFlow: userData.repetitionFlow || [2, 4, 7, 7, 7, 30, 30, 30, 130, 130, 130, 365, 365, 365],
+      createdAt: new Date(),
+      updatedAt: new Date()
     }
+    
+    const result = await db.collection('users').insertOne(userWithDefaults)
+    return result.insertedId
+  } catch (error) {
+    console.error('Error creating user:', error)
+    throw error
   }
+}
 }
 
 export default UserService

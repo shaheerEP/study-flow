@@ -36,18 +36,24 @@ import {
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
+import { useSession } from "next-auth/react"
+import { useToast } from "@/components/ui/use-toast"
 
-const subjects = [
-  { id: "javascript", name: "JavaScript", color: "bg-yellow-500" },
-  { id: "react", name: "React", color: "bg-blue-500" },
-  { id: "css", name: "CSS", color: "bg-purple-500" },
-  { id: "nodejs", name: "Node.js", color: "bg-green-500" },
-  { id: "database", name: "Database", color: "bg-orange-500" },
-  { id: "algorithms", name: "Algorithms", color: "bg-red-500" },
-]
+interface Subject {
+  id: string
+  name: string
+  color: string
+  createdAt: Date
+}
+
 
 export default function AddContentPage() {
-  const router = useRouter()
+const { data: session } = useSession()
+const { toast } = useToast()
+const [subjects, setSubjects] = useState<Subject[]>([])
+const [isLoading, setIsLoading] = useState(false)
+const [isSaving, setIsSaving] = useState(false)
+ const router = useRouter()
   const [content, setContent] = useState("")
   const [title, setTitle] = useState("")
   const [selectedSubject, setSelectedSubject] = useState("")
@@ -61,30 +67,51 @@ export default function AddContentPage() {
   const [tags, setTags] = useState<string[]>([])
   const [currentTag, setCurrentTag] = useState("")
 
-  // Auto-save functionality
-  useEffect(() => {
-    if (content.trim() || title.trim()) {
-      const timer = setTimeout(() => {
-        setIsAutoSaving(true)
-        // Simulate auto-save
-        setTimeout(() => {
-          setIsAutoSaving(false)
-          setLastSaved(new Date())
-        }, 1000)
-      }, 2000)
-
-      return () => clearTimeout(timer)
+  
+useEffect(() => {
+  const fetchSubjects = async () => {
+    if (!session?.user?.id) return
+    
+    try {
+      const response = await fetch('/api/subjects')
+      const data = await response.json()
+      setSubjects(data.subjects)
+    } catch (error) {
+      console.error('Error fetching subjects:', error)
     }
-  }, [content, title, tags])
+  }
 
-  // Check for duplicates
-  useEffect(() => {
-    if (content.length > 50) {
-      // Simulate duplicate detection
-      const hasDuplicate = content.toLowerCase().includes("javascript closure")
-      setDuplicateWarning(hasDuplicate)
+  fetchSubjects()
+}, [session])
+
+// Duplicate check
+useEffect(() => {
+  if (content.length > 50) {
+    const checkDuplicate = async () => {
+      try {
+        const response = await fetch('/api/content/duplicate-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content })
+        })
+        const data = await response.json()
+        setDuplicateWarning(data.isDuplicate)
+      } catch (error) {
+        console.error('Error checking duplicate:', error)
+      }
     }
-  }, [content])
+
+    const timer = setTimeout(checkDuplicate, 1000)
+    return () => clearTimeout(timer)
+  }
+}, [content])
+
+// Auto-save (remove simulate, keep real save logic)
+useEffect(() => {
+  if (content.trim() || title.trim()) {
+    setLastSaved(new Date())
+  }
+}, [content, title, tags])
 
   const formatText = (format: string) => {
     const textarea = document.getElementById("content-editor") as HTMLTextAreaElement
@@ -132,19 +159,106 @@ export default function AddContentPage() {
       .replace(/(<li>.*<\/li>)/s, "<ul>$1</ul>")
   }
 
-  const handleSave = () => {
-    // Simulate save
-    console.log("Saving content:", { title, content, subject: selectedSubject, tags })
-    router.push("/content-library")
+ const handleSave = async () => {
+  if (!session?.user?.id) {
+    toast({
+      title: "Error",
+      description: "Please sign in to save content",
+      variant: "destructive"
+    })
+    return
   }
 
-  const handleAddSubject = () => {
-    if (newSubjectName.trim()) {
-      // Add new subject logic here
+  if (!selectedSubject) {
+    toast({
+      title: "Error", 
+      description: "Please select a subject",
+      variant: "destructive"
+    })
+    return
+  }
+
+  setIsSaving(true)
+  
+  try {
+    const selectedSubjectData = subjects.find(s => s.id === selectedSubject)
+    
+    const response = await fetch('/api/content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: title.trim() || undefined,
+        content: content.trim(),
+        subject: selectedSubjectData,
+        tags
+      })
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+      toast({
+        title: "Success",
+        description: "Content saved successfully"
+      })
+      router.push("/content-library")
+    } else {
+      throw new Error(data.error || 'Failed to save content')
+    }
+  } catch (error) {
+    console.error('Save error:', error)
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to save content",
+      variant: "destructive"
+    })
+  } finally {
+    setIsSaving(false)
+  }
+}
+
+const handleAddSubject = async () => {
+  if (!newSubjectName.trim()) return
+  
+  setIsLoading(true)
+  
+  try {
+    const response = await fetch('/api/subjects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: newSubjectName.trim(),
+        color: newSubjectColor
+      })
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+      setSubjects([...subjects, data.subject])
+      setSelectedSubject(data.subject.id)
       setShowNewSubjectDialog(false)
       setNewSubjectName("")
+      setNewSubjectColor("bg-gray-500")
+      
+      toast({
+        title: "Success",
+        description: "Subject created successfully"
+      })
+    } else {
+      throw new Error(data.error || 'Failed to create subject')
     }
+  } catch (error) {
+    console.error('Create subject error:', error)
+    toast({
+      title: "Error", 
+      description: error instanceof Error ? error.message : "Failed to create subject",
+      variant: "destructive"
+    })
+  } finally {
+    setIsLoading(false)
   }
+}
 
   const handleAddTag = () => {
     if (currentTag.trim() && !tags.includes(currentTag.trim())) {
@@ -156,6 +270,18 @@ export default function AddContentPage() {
   const handleRemoveTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove))
   }
+
+  if (!session) {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold mb-4">Please sign in</h1>
+        <p className="text-muted-foreground">You need to be signed in to add content</p>
+      </div>
+    </div>
+  )
+}
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -178,8 +304,10 @@ export default function AddContentPage() {
                 Saving...
               </div>
             )}
-            {lastSaved && !isAutoSaving && (
-              <p className="text-sm text-muted-foreground">Last saved: {lastSaved.toLocaleTimeString()}</p>
+            {lastSaved && (
+              <p className="text-sm text-muted-foreground">
+                Last updated: {lastSaved.toLocaleTimeString()}
+              </p>
             )}
           </div>
         </div>
@@ -421,10 +549,14 @@ export default function AddContentPage() {
                 <CardTitle className="text-lg">Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button onClick={handleSave} className="w-full" disabled={!content.trim()}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Content
-                </Button>
+               <Button 
+  onClick={handleSave} 
+  className="w-full" 
+  disabled={!content.trim() || !selectedSubject || isSaving}
+>
+  <Save className="h-4 w-4 mr-2" />
+  {isSaving ? "Saving..." : "Save Content"}
+</Button>
                 <Button variant="outline" className="w-full" onClick={() => router.back()}>
                   <X className="h-4 w-4 mr-2" />
                   Cancel

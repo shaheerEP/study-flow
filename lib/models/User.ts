@@ -4,6 +4,7 @@ export interface User {
   name: string
   image?: string
   googleId?: string
+  repetitionFlow: number[] // Add this field
   createdAt: Date
   updatedAt: Date
 }
@@ -13,4 +14,5 @@ export interface CreateUserData {
   name: string
   image?: string
   googleId?: string
+  repetitionFlow?: number[] // Add this field
 }

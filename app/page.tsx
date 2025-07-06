@@ -6,28 +6,18 @@ import {
   Plus,
   BarChart3,
   Settings,
-  Brain,
   Target,
   TrendingUp,
   BookOpen,
   PlayCircle,
-  Sun,
-  Moon,
-  Menu,
-  X,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { useTheme } from "next-themes"
-import { LogoutButton } from "@/components/logout-button"
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"
+import Header from "./Header"
 
 export default function StudyFlowDashboard() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { theme, setTheme } = useTheme()
-
   // Set auth status on component mount (simulate successful login)
   useEffect(() => {
     localStorage.setItem("studyflow_auth", "true")
@@ -103,98 +93,26 @@ export default function StudyFlowDashboard() {
     { action: "Completed", item: "Database Indexing", time: "1 day ago", type: "success" },
   ]
 
+  const quickStats = [
+    { label: "Day Streak", value: "47", icon: Target, color: "text-orange-500" },
+    { label: "Items Learned", value: "1,247", icon: BookOpen, color: "text-blue-500" },
+    { label: "Completion Rate", value: "94%", icon: TrendingUp, color: "text-green-500" },
+  ]
+
+  const quickActions = [
+    { label: "Add New Content", icon: Plus, href: "/add-content" },
+    { label: "Complete Review", icon: BookOpen, href: "/complete-review" },
+    { label: "View Analytics", icon: BarChart3, href: "/analytics" },
+    { label: "Settings", icon: Settings, href: "/settings" },
+  ]
+
   const totalReviews = reviewSections.reduce((sum, section) => sum + section.count, 0)
   const totalCompleted = reviewSections.reduce((sum, section) => sum + section.completed, 0)
   const overallProgress = totalReviews > 0 ? (totalCompleted / totalReviews) * 100 : 0
 
-  const handleThemeToggle = () => {
-    if (theme === "dark") {
-      setTheme("light")
-    } else if (theme === "light") {
-      setTheme("system")
-    } else {
-      setTheme("dark")
-    }
-  }
-
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between px-4">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Brain className="h-8 w-8 text-primary" />
-              <h1 className="text-2xl font-bold">StudyFlow</h1>
-            </div>
-
-            {/* Desktop Navigation */}
-        
-<nav className="hidden md:flex items-center space-x-6 ml-8">
-  <Link href="/">
-    <Button variant="ghost" className="text-primary font-medium">
-      Dashboard
-    </Button>
-  </Link>
-  <Link href="/add-content">
-    <Button variant="ghost">Add Content</Button>
-  </Link>
-  <Link href="/analytics">
-    <Button variant="ghost">Analytics</Button>
-  </Link>
-  <Link href="/settings">
-    <Button variant="ghost">Settings</Button>
-  </Link>
-</nav>
-
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="icon" onClick={handleThemeToggle}>
-              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            </Button>
-
-            {/* Logout Button */}
-            <div className="hidden md:block">
-              <LogoutButton />
-            </div>
-
-            {/* Mobile Menu Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
-          </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t bg-background">
-            <nav className="flex flex-col space-y-2 p-4">
-              <Button variant="ghost" className="justify-start text-primary font-medium">
-                Dashboard
-              </Button>
-              <Button variant="ghost" className="justify-start">
-                Add Content
-              </Button>
-              <Button variant="ghost" className="justify-start">
-                Analytics
-              </Button>
-              <Button variant="ghost" className="justify-start">
-                Settings
-              </Button>
-              <div className="pt-2 border-t">
-                <LogoutButton />
-              </div>
-            </nav>
-          </div>
-        )}
-      </header>
+      <Header />
 
       <div className="container mx-auto px-4 py-6">
         {/* Today's Overview */}
@@ -234,41 +152,19 @@ export default function StudyFlowDashboard() {
           <div className="lg:col-span-3 space-y-6">
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center space-x-2">
-                    <Target className="h-8 w-8 text-orange-500" />
-                    <div>
-                      <p className="text-2xl font-bold">47</p>
-                      <p className="text-sm text-muted-foreground">Day Streak</p>
+              {quickStats.map((stat) => (
+                <Card key={stat.label}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center space-x-2">
+                      <stat.icon className={`h-8 w-8 ${stat.color}`} />
+                      <div>
+                        <p className="text-2xl font-bold">{stat.value}</p>
+                        <p className="text-sm text-muted-foreground">{stat.label}</p>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center space-x-2">
-                    <BookOpen className="h-8 w-8 text-blue-500" />
-                    <div>
-                      <p className="text-2xl font-bold">1,247</p>
-                      <p className="text-sm text-muted-foreground">Items Learned</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center space-x-2">
-                    <TrendingUp className="h-8 w-8 text-green-500" />
-                    <div>
-                      <p className="text-2xl font-bold">94%</p>
-                      <p className="text-sm text-muted-foreground">Completion Rate</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
 
             {/* Complete Review Section */}
@@ -380,26 +276,17 @@ export default function StudyFlowDashboard() {
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add New Content
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => (window.location.href = "/complete-review")}
-                >
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Complete Review
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  View Analytics
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
-                </Button>
+                {quickActions.map((action) => (
+                  <Button
+                    key={action.label}
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => (window.location.href = action.href)}
+                  >
+                    <action.icon className="h-4 w-4 mr-2" />
+                    {action.label}
+                  </Button>
+                ))}
               </CardContent>
             </Card>
           </div>

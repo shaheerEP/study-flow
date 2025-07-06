@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
@@ -31,153 +32,66 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toast } from "@/components/ui/use-toast"
 
 // Sample content data for today's review
-const todaysContent = [
-  {
-    id: 1,
-    title: "JavaScript Closures and Scope",
-    content: `A **closure** is a function that has access to variables in its outer (enclosing) scope even after the outer function has returned. Closures are created every time a function is created, at function creation time.
 
-**Key Points:**
-• Inner functions have access to outer function variables
-• Variables remain accessible even after outer function returns
-• Commonly used in ==module patterns== and *event handlers*
-• Essential for maintaining state in functional programming
-
-**Example:**
-\`\`\`javascript
-function outerFunction(x) {
-  return function innerFunction(y) {
-    return x + y; // x is still accessible
-  };
+interface ContentItem {
+  _id: string
+  title?: string
+  content: string
+  subject: { name: string; color: string }
+  reviewStage: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  createdAt: string
+  difficulty?: 'easy' | 'medium' | 'hard'
+  estimatedTime?: string
 }
-\`\`\``,
-    subject: { name: "JavaScript", color: "bg-yellow-500" },
-    reviewStage: "daily",
-    scheduledDate: "2024-01-15",
-    addedDate: "2024-01-10",
-    difficulty: "medium",
-    estimatedTime: "3 min",
-  },
-  {
-    id: 2,
-    title: "React useEffect Dependencies",
-    content: `The **dependency array** in useEffect determines when the effect runs:
-
-**Dependency Array Rules:**
-• **Empty array []**: Effect runs once after initial render
-• **No array**: Effect runs after every render  
-• **With dependencies**: Effect runs when dependencies change
-
-**Best Practices:**
-• Always include all values from component scope used inside the effect
-• Use ESLint plugin to catch missing dependencies
-• Consider using ==useCallback== and ==useMemo== for complex dependencies
-
-**Common Pitfall:**
-Missing dependencies can lead to stale closures and bugs.`,
-    subject: { name: "React", color: "bg-blue-500" },
-    reviewStage: "weekly",
-    scheduledDate: "2024-01-15",
-    addedDate: "2024-01-08",
-    difficulty: "hard",
-    estimatedTime: "4 min",
-  },
-  {
-    id: 3,
-    title: "CSS Grid vs Flexbox",
-    content: `**CSS Grid** is for ==two-dimensional== layouts, while **Flexbox** is for *one-dimensional* layouts:
-
-**CSS Grid:**
-• Controls both rows and columns simultaneously
-• Better for complex, two-dimensional layouts
-• Use for page-level layouts
-• Properties: grid-template-columns, grid-template-rows
-
-**Flexbox:**
-• Controls either row OR column (one dimension)
-• Better for component-level layouts
-• Use for navigation bars, card layouts
-• Properties: flex-direction, justify-content, align-items
-
-**When to Use:**
-• Grid: Page layouts, complex forms
-• Flexbox: Navigation, buttons, simple card layouts`,
-    subject: { name: "CSS", color: "bg-purple-500" },
-    reviewStage: "monthly",
-    scheduledDate: "2024-01-15",
-    addedDate: "2024-01-05",
-    difficulty: "easy",
-    estimatedTime: "2 min",
-  },
-  {
-    id: 4,
-    title: "Database Normalization Principles",
-    content: `**Database normalization** is the process of organizing data to reduce redundancy and improve data integrity.
-
-**Normal Forms:**
-• **1NF**: Eliminate repeating groups, atomic values only
-• **2NF**: 1NF + eliminate partial dependencies
-• **3NF**: 2NF + eliminate transitive dependencies
-• **BCNF**: 3NF + eliminate remaining anomalies
-
-**Benefits:**
-• Reduces data redundancy
-• Improves data consistency
-• Easier maintenance and updates
-• Better storage efficiency
-
-**Trade-offs:**
-• May require more complex queries (joins)
-• Can impact read performance
-• Balance normalization with query performance needs`,
-    subject: { name: "Database", color: "bg-green-500" },
-    reviewStage: "weekly",
-    scheduledDate: "2024-01-15",
-    addedDate: "2024-01-03",
-    difficulty: "hard",
-    estimatedTime: "5 min",
-  },
-  {
-    id: 5,
-    title: "HTTP Status Codes",
-    content: `**HTTP status codes** indicate the result of HTTP requests:
-
-**2xx Success:**
-• 200 OK - Request successful
-• 201 Created - Resource created successfully
-• 204 No Content - Successful, no content to return
-
-**4xx Client Errors:**
-• 400 Bad Request - Invalid request syntax
-• 401 Unauthorized - Authentication required
-• 403 Forbidden - Access denied
-• 404 Not Found - Resource not found
-
-**5xx Server Errors:**
-• 500 Internal Server Error - Generic server error
-• 502 Bad Gateway - Invalid response from upstream
-• 503 Service Unavailable - Server temporarily unavailable
-
-**Best Practices:**
-• Use appropriate codes for different scenarios
-• Provide meaningful error messages
-• Handle errors gracefully in client applications`,
-    subject: { name: "Web Development", color: "bg-orange-500" },
-    reviewStage: "daily",
-    scheduledDate: "2024-01-15",
-    addedDate: "2024-01-12",
-    difficulty: "medium",
-    estimatedTime: "3 min",
-  },
-]
 
 export default function CompleteReviewPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [previewMode, setPreviewMode] = useState(false)
-  const [archivedItems, setArchivedItems] = useState<number[]>([])
+  const [archivedItems, setArchivedItems] = useState<string[]>([])
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [itemToDelete, setItemToDelete] = useState<number | null>(null)
-  const [deletedItems, setDeletedItems] = useState<number[]>([])
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null)
+  const [deletedItems, setDeletedItems] = useState<string[]>([])
+  const [todaysContent, setTodaysContent] = useState<ContentItem[]>([])
+  const [loading, setLoading] = useState(true)
+
+   useEffect(() => {
+    fetchTodaysContent()
+  }, [])
+
+    const determineReviewStage = (reviewCount: number): 'daily' | 'weekly' | 'monthly' | 'yearly' => {
+    if (reviewCount < 2) return 'daily'
+    if (reviewCount < 5) return 'weekly'
+    if (reviewCount < 8) return 'monthly'
+    return 'yearly'
+  }
+
+  const fetchTodaysContent = async () => {
+    try {
+      const response = await fetch('/api/content/today')
+      if (response.ok) {
+        const data = await response.json()
+        setTodaysContent(data.content.map((item: any) => ({
+          ...item,
+          _id: item._id.toString(),
+          estimatedTime: item.estimatedTime || "3 min",
+          reviewStage: determineReviewStage(item.reviewCount)
+        })))
+      }
+    } catch (error) {
+      console.error('Error fetching content:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load today's content",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+
+
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -186,14 +100,6 @@ export default function CompleteReviewPage() {
     day: "numeric",
   })
 
-  const activeItems = todaysContent.filter(
-    (item) => !archivedItems.includes(item.id) && !deletedItems.includes(item.id),
-  )
-
-  const totalEstimatedTime = activeItems.reduce((total, item) => {
-    const minutes = Number.parseInt(item.estimatedTime.split(" ")[0])
-    return total + minutes
-  }, 0)
 
   const renderContent = (text: string) => {
     return text
@@ -248,45 +154,12 @@ export default function CompleteReviewPage() {
     }
   }
 
-  const handleArchiveItem = (itemId: number) => {
-    setArchivedItems([...archivedItems, itemId])
-    const item = todaysContent.find((item) => item.id === itemId)
-    toast({
-      title: "Item archived",
-      description: `"${item?.title}" has been archived.`,
-    })
-  }
 
   const handleDeleteItem = (itemId: number) => {
     setItemToDelete(itemId)
     setShowDeleteDialog(true)
   }
 
-  const confirmDelete = () => {
-    if (itemToDelete) {
-      setDeletedItems([...deletedItems, itemToDelete])
-      const item = todaysContent.find((item) => item.id === itemToDelete)
-      toast({
-        title: "Item deleted",
-        description: `"${item?.title}" has been permanently deleted.`,
-      })
-      setItemToDelete(null)
-      setShowDeleteDialog(false)
-    }
-  }
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case "easy":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-      case "medium":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-      case "hard":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-    }
-  }
 
   const getStageColor = (stage: string) => {
     switch (stage) {
@@ -302,6 +175,87 @@ export default function CompleteReviewPage() {
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
     }
   }
+
+   // Update action handlers to use API
+  const handleArchiveItem = async (itemId: string) => {
+    try {
+      const response = await fetch('/api/content/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'archive', contentId: itemId })
+      })
+
+      if (response.ok) {
+        setArchivedItems([...archivedItems, itemId])
+        const item = todaysContent.find(item => item._id === itemId)
+        toast({
+          title: "Item archived",
+          description: `"${item?.title || 'Content'}" has been archived.`
+        })
+      }
+    } catch (error) {
+      console.error('Archive error:', error)
+      toast({
+        title: "Error",
+        description: "Failed to archive item",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (itemToDelete) {
+      try {
+        const response = await fetch('/api/content/actions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete', contentId: itemToDelete })
+        })
+
+        if (response.ok) {
+          setDeletedItems([...deletedItems, itemToDelete])
+          const item = todaysContent.find(item => item._id === itemToDelete)
+          toast({
+            title: "Item deleted",
+            description: `"${item?.title || 'Content'}" has been permanently deleted.`
+          })
+        }
+      } catch (error) {
+        console.error('Delete error:', error)
+        toast({
+          title: "Error",
+          description: "Failed to delete item",
+          variant: "destructive"
+        })
+      }
+      setItemToDelete(null)
+      setShowDeleteDialog(false)
+    }
+  }
+
+   if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading today's content...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Update the filtering logic
+const activeItems = todaysContent.filter(
+  (item) => !archivedItems.includes(item._id) && !deletedItems.includes(item._id)
+)
+
+// Add this calculation
+const totalEstimatedTime = activeItems.reduce((total, item) => {
+  const timeStr = item.estimatedTime || "3 min"
+  const minutes = parseInt(timeStr.split(" ")[0])
+  return total + minutes
+}, 0)
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -377,7 +331,7 @@ export default function CompleteReviewPage() {
             </Card>
           ) : (
             activeItems.map((item, index) => (
-              <Card key={item.id} className="relative">
+    <Card key={item._id} className="relative">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -415,7 +369,7 @@ export default function CompleteReviewPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleArchiveItem(item.id)}
+                          onClick={() => handleArchiveItem(item._id)}
                           title="Archive item"
                         >
                           <Archive className="h-4 w-4" />
@@ -423,7 +377,7 @@ export default function CompleteReviewPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteItem(item.id)}
+                          onClick={() => handleDeleteItem(item._id)}
                           title="Delete item"
                           className="text-destructive hover:text-destructive"
                         >
@@ -462,7 +416,7 @@ export default function CompleteReviewPage() {
               <Alert className="border-destructive/20 bg-destructive/5">
                 <AlertTriangle className="h-4 w-4 text-destructive" />
                 <AlertDescription>
-                  <strong>"{todaysContent.find((item) => item.id === itemToDelete)?.title}"</strong> will be permanently
+                  <strong>"{todaysContent.find((item) => item._id === itemToDelete)?.title}"</strong> will be permanently
                   deleted from your study library.
                 </AlertDescription>
               </Alert>
