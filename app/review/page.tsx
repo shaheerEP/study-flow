@@ -199,7 +199,7 @@ export default function ReviewPage() {
               >
                 <RotateCcw className="h-5 w-5" />
                 <span className="font-medium">Again</span>
-                <span className="text-xs opacity-90">< 1 day</span>\
+                <span className="text-xs opacity-90">&lt; 1 day</span>
               </Button>
               <Button
                 onClick={() => handleAssessment("hard")}
@@ -278,5 +278,4 @@ export default function ReviewPage() {
       </div>
     </div>
   )
-  
 }
